@@ -120,3 +120,41 @@ def test_gh_failure_and_bad_input_exit_2(fake_gh, tmp_path, monkeypatch, capsys)
     fake_gh["stdout"] = "not json"
     assert main(["replay", "--repo", "o/n"]) == 2
     assert main(["replay", "--repo", "o/n", "--last", "0"]) == 2
+
+
+def _co_authored(n: int) -> dict:
+    commits = [
+        {
+            "oid": f"{i:02d}" + "c" * 38,
+            "authors": [{"name": "Bob", "email": "b@example.com", "login": "bob"}],
+            "messageHeadline": f"Step {i}",
+            "messageBody": "Co-authored-by: Claude <noreply@anthropic.com>",
+        }
+        for i in range(n)
+    ]
+    return {**CLEAN, "number": 3, "commits": commits}
+
+
+def test_same_shape_findings_are_grouped(fake_gh, tmp_path, monkeypatch, capsys) -> None:
+    monkeypatch.chdir(tmp_path)
+    fake_gh["stdout"] = json.dumps([_co_authored(16)])
+    assert main(["replay", "--repo", "o/n", "--last", "1"]) == 0
+    out = capsys.readouterr().out
+    assert (
+        "[attribution] 16 commits credit a coding agent (claude) with 'Co-authored-by' "
+        "rather than 'Assisted-by' (00cccccc, 01cccccc, 02cccccc, ... +13 more)"
+    ) in out
+    assert out.count("Co-authored-by") == 1
+    assert "attribution: 1" in out
+
+
+def test_small_group_lists_all_shas_and_single_stays(
+    fake_gh, tmp_path, monkeypatch, capsys
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    fake_gh["stdout"] = json.dumps([_co_authored(2), AGENT])
+    assert main(["replay", "--repo", "o/n", "--last", "2"]) == 0
+    out = capsys.readouterr().out
+    assert "2 commits credit a coding agent (claude)" in out
+    assert "(00cccccc, 01cccccc)" in out and "more" not in out
+    assert "- [attribution] commit bbbbbbbb has" in out

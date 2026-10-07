@@ -1,5 +1,5 @@
 name: pr-policy gate
-description: Check pull requests against your own CONTRIBUTING rules and post one sticky comment. No AI detection.
+description: Reduce low-effort and drive-by PRs with checks your project writes down. Warns by default. No AI detection.
 author: rodny90
 
 branding:

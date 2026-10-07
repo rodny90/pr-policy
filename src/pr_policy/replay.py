@@ -112,6 +112,39 @@ def replay(items: list[dict], config: Config) -> Replay:
     return result
 
 
+_PLURAL_VERB = {"credits": "credit", "has": "have"}
+MAX_SHAS = 3
+
+
+def group_lines(findings: list[Finding]) -> list[str]:
+    """One line per finding, folding same-rule, same-shape commit findings together."""
+    order: list[tuple[str, str]] = []
+    groups: dict[tuple[str, str], list[Finding]] = {}
+    for f in findings:
+        prefix = f"commit {f.where} "
+        if f.where and f.message.startswith(prefix):
+            key = (f.rule, "commit " + f.message[len(prefix) :])
+        else:
+            key = (f.rule, f"#{len(order)}")  # never grouped
+        if key not in groups:
+            order.append(key)
+        groups.setdefault(key, []).append(f)
+    lines = []
+    for key in order:
+        members = groups[key]
+        if len(members) == 1:
+            lines.append(f"[{members[0].rule}] {members[0].message}")
+            continue
+        verb, _, rest = key[1][len("commit ") :].partition(" ")
+        shas = ", ".join(m.where for m in members[:MAX_SHAS])
+        more = len(members) - MAX_SHAS
+        shas += f", ... +{more} more" if more > 0 else ""
+        lines.append(
+            f"[{key[0]}] {len(members)} commits {_PLURAL_VERB.get(verb, verb)} {rest} ({shas})"
+        )
+    return lines
+
+
 def render(result: Replay, repo: str, config: Config) -> str:
     source = config.source or "built-in defaults"
     lines = [
@@ -125,7 +158,7 @@ def render(result: Replay, repo: str, config: Config) -> str:
             lines.append(f"    {rule}: {count}")
     for number, findings in result.flagged:
         lines += ["", f"  #{number}"]
-        lines += [f"    - [{f.rule}] {f.message}" for f in findings]
+        lines += [f"    - {line}" for line in group_lines(findings)]
     lines += [
         "",
         f"  rules run: {', '.join(result.checked) or 'none'}",
