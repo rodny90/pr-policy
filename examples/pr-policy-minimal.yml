@@ -1,0 +1,18 @@
+# Copy to .github/workflows/pr-policy.yml
+#
+# Reporting only: posts one sticky comment on each pull request and never
+# fails the job. Uses the defaults, or .github/pr-policy.yml if you have one.
+name: pr-policy
+on: pull_request
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write   # lets the action post and update its comment
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # commit trailers need the branch history
+      - uses: rodny90/pr-policy@v0
