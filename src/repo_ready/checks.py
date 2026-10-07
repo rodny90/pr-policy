@@ -47,15 +47,27 @@ class Repo:
     def __init__(self, root: Path) -> None:
         self.root = Path(root)
 
-    def find(self, *stems: str, dirs: Sequence[str] = (".", ".github", "docs")) -> Path | None:
-        """Return the first file whose name (minus extension) matches a stem."""
+    def find(
+        self,
+        *stems: str,
+        dirs: Sequence[str] = (".", ".github", "docs"),
+        suffixes: Sequence[str] | None = None,
+    ) -> Path | None:
+        """Return the first file whose name (minus extension) matches a stem.
+
+        With ``suffixes`` the extension has to be one of them as well; "" stands for
+        no extension, so ``("", ".md")`` rejects ``claude.png`` and ``agents.txt``.
+        """
         wanted = {stem.lower() for stem in stems}
+        allowed = None if suffixes is None else {x.lower() for x in suffixes}
         for directory in dirs:
             base = self.root / directory
             if not base.is_dir():
                 continue
             for entry in sorted(base.iterdir()):
-                if entry.is_file() and entry.stem.lower() in wanted:
+                if not entry.is_file() or entry.stem.lower() not in wanted:
+                    continue
+                if allowed is None or entry.suffix.lower() in allowed:
                     return entry
         return None
 
@@ -198,6 +210,8 @@ CI_FILES = (
 )
 
 AGENT_FILE_STEMS = ("agents", "claude", "gemini", ".cursorrules")
+# "AGENTS.md", or a bare ".cursorrules"; not "claude.png" or "agents.txt".
+AGENT_FILE_SUFFIXES = ("", ".md")
 
 MANIFESTS = (
     "pyproject.toml",
@@ -305,9 +319,9 @@ def _check_issue_templates(repo: Repo) -> tuple[bool, str]:
 def _check_agent_instructions(repo: Repo) -> tuple[bool, str]:
     # AGENTS.md is the shared convention; the others are tool-specific files that
     # serve the same purpose, so a project using one of them is not marked down.
-    found = repo.find(*AGENT_FILE_STEMS, dirs=(".",))
+    found = repo.find(*AGENT_FILE_STEMS, dirs=(".",), suffixes=AGENT_FILE_SUFFIXES)
     if found is None:
-        found = repo.find("copilot-instructions", dirs=(".github",))
+        found = repo.find("copilot-instructions", dirs=(".github",), suffixes=AGENT_FILE_SUFFIXES)
     if found is None:
         return False, "no AGENTS.md or other agent instructions file found"
     return True, f"found {repo.rel(found)}"

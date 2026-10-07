@@ -71,6 +71,8 @@ All notable changes to this project are documented here. The format follows
   `checkbox_patterns` is documented in the README.
 - `pr-policy init` no longer strips leading `x`/`X` letters from the line it quotes
   ("Xcode users must ...").
+- `repo-ready`'s `agents-md` check accepts only `.md` or extensionless names, so
+  `claude.png` or `agents.txt` no longer pass for an instructions file.
 
 ## [0.1.0] - 2026-10-07
 

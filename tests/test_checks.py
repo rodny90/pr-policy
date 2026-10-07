@@ -146,6 +146,24 @@ def test_tool_specific_instruction_files_also_pass(repo: Path, name: str) -> Non
     assert result_for(repo, "agents-md").passed
 
 
+@pytest.mark.parametrize("name", ["claude.png", "agents.txt", "gemini.json", "AGENTS.md.bak"])
+def test_files_that_only_share_a_stem_do_not_count(repo: Path, name: str) -> None:
+    (repo / name).write_text("not instructions")
+    assert not result_for(repo, "agents-md").passed
+
+
+@pytest.mark.parametrize("name", ["AGENTS", "claude.MD"])
+def test_extensionless_and_uppercase_md_names_count(repo: Path, name: str) -> None:
+    (repo / name).write_text("Run pytest.")
+    assert result_for(repo, "agents-md").passed
+
+
+def test_a_copilot_instructions_png_does_not_count(repo: Path) -> None:
+    (repo / ".github").mkdir()
+    (repo / ".github" / "copilot-instructions.png").write_text("x")
+    assert not result_for(repo, "agents-md").passed
+
+
 def test_copilot_instructions_pass(repo: Path) -> None:
     (repo / ".github").mkdir()
     (repo / ".github" / "copilot-instructions.md").write_text("Run pytest.")
