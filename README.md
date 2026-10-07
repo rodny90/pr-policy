@@ -76,7 +76,7 @@ What `pr-policy` cannot do: tell you whether a change is correct, whether its te
 
 Maintainers are being buried in contributions, and the tools arriving to help are mostly **throttles**: cap the number of open pull requests, restrict them to collaborators, turn them off. Those control *how many* submissions arrive. Nothing checks whether an arriving submission follows the rules the project published.
 
-The gap is concrete. GitHub's issue forms have supported required fields and per-field validation for years; [issue forms are not supported for pull requests](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/about-issue-and-pull-request-templates). A pull request template is inert markdown. A contributor can delete the whole thing — including the AI-disclosure checkbox your project added — and nothing notices.
+The gap is concrete. GitHub's issue forms have supported required fields and per-field validation for years; [issue forms are not supported for pull requests](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms). A pull request template is inert markdown. A contributor can delete the whole thing — including the AI-disclosure checkbox your project added — and nothing notices.
 
 Projects have written the policies. MicroPython and ESLint require an AI declaration. The [Linux kernel](https://docs.kernel.org/process/coding-assistants.html) requires an `Assisted-by:` trailer and forbids agents from adding `Signed-off-by:`, because only a human can certify the DCO. `pr-policy` is the enforcement half those policies never got.
 
