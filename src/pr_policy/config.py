@@ -37,8 +37,11 @@ AGENT_IDENTITIES = (
     "gemini",
     "windsurf",
     "amazon q",
+    "openhands",
+    "google-labs-jules",
     "noreply@anthropic.com",
     "noreply@openai.com",
+    "noreply@cline.bot",
 )
 
 # What counts as an AI-disclosure checkbox: a ticked box whose label matches any of

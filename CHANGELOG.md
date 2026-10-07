@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `attribution` recognises three more agent identities in commit trailers: OpenHands
+  (`openhands`), Google Jules (`google-labs-jules`), and Cline (`noreply@cline.bot`).
+  Common first names such as "Jules" or the surname "Cline" still do not match.
+
 ## [0.3.0] - 2026-10-07
 
 ### Added
