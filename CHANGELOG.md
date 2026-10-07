@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-07
+
 ### Added
 
 - **repo-ready `agents-md` check** — passes when the repository root has `AGENTS.md`
@@ -129,5 +131,6 @@ written down at all.
 - Case-insensitive file lookup that also searches `.github/` and `docs/`, and skips
   vendored directories so a dependency's tests cannot make a repository look tested.
 
-[Unreleased]: https://github.com/rodny90/pr-policy/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/rodny90/pr-policy/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/rodny90/pr-policy/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rodny90/pr-policy/releases/tag/v0.1.0
