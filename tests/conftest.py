@@ -50,3 +50,13 @@ class GitRepo:
 @pytest.fixture
 def repo(tmp_path: Path) -> GitRepo:
     return GitRepo(tmp_path)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_from_github_event(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the tests hermetic when they run inside a real pull request job.
+
+    The tool reads the live pull request from GITHUB_EVENT_PATH, so without this
+    the suite would judge the pull request that is running it.
+    """
+    monkeypatch.delenv("GITHUB_EVENT_PATH", raising=False)

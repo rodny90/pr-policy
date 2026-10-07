@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -18,10 +19,16 @@ import yaml
 
 ACTION = Path(__file__).resolve().parent.parent / "action.yml"
 
-pytestmark = pytest.mark.skipif(
-    shutil.which("pr-policy") is None,
-    reason="the action invokes the installed pr-policy console script",
-)
+pytestmark = [
+    pytest.mark.skipif(
+        shutil.which("pr-policy") is None,
+        reason="the action invokes the installed pr-policy console script",
+    ),
+    pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="the action's shell script needs a POSIX bash, not the WSL launcher",
+    ),
+]
 
 
 def check_step_script() -> str:
