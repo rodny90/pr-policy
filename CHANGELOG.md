@@ -22,6 +22,10 @@ All notable changes to this project are documented here. The format follows
   pull requests from forks (read-only token, HTTP 403). It logs a `::warning::` explaining
   why and what to do, and the job's result still comes only from the check's exit code.
   Failures of the check itself are not affected.
+- The action posts its comment only on `pull_request` events, and the fork-PR warning now
+  points at a `workflow_run` split rather than `pull_request_target`, which would hand a
+  write token to a job that checks out the fork.
+- The `exit-code` output documents `2` (bad configuration, revision or missing base).
 - The `Changelog` URL in the package metadata pointed at `blob/main`; it now points at
   `blob/master`, the repository's default branch.
 - repo-ready weights: `changelog` and `code-of-conduct` drop from 5 to 4 points to
@@ -33,6 +37,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- The action no longer overwrites a good sticky comment with a bare marker when the check
+  fails with exit code 2: with no report there is nothing to post. A markdown report that
+  comes out empty is removed and reported with a warning instead of being hidden.
+- The sticky-comment lookup only considers comments by `github-actions[bot]` and only
+  updates the first match, so a quoted marker or a second page of comments cannot redirect it.
 - `pr-policy init` now requires requirement-shaped language before it enables
   `disclosure` or `linked_issue`, as the 0.1.0 notes already claimed. Before, any
   non-negated mention of AI tools or of issues switched the rule on ("You may use AI

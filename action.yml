@@ -30,7 +30,7 @@ inputs:
 
 outputs:
   exit-code:
-    description: 0 when the policy passed or is reporting-only, 1 when enforcement failed.
+    description: 0 when the policy passed or is reporting-only, 1 when enforcement failed, 2 on a bad configuration, revision or missing base.
     value: ${{ steps.check.outputs.exit-code }}
   findings:
     description: The findings as JSON.
@@ -77,12 +77,26 @@ runs:
         if [ -n "$CONFIG" ]; then args+=(--config "$CONFIG"); fi
         if [ "$STRICT" = "true" ]; then args+=(--strict); fi
 
+        # Files from an earlier run on a self-hosted runner must not be mistaken
+        # for this run's result.
+        rm -f policy-comment.md policy-findings.json
+
         # Human-readable in the job log, and the exit code that decides the job.
         pr-policy "${args[@]}"
         code=$?
 
         pr-policy "${args[@]}" --format markdown > policy-comment.md || true
         pr-policy "${args[@]}" --format json > policy-findings.json || true
+
+        # An empty file means the renderer failed (exit code 2 is already
+        # reported above). Remove it so the comment step has nothing to post
+        # rather than a bare marker that would overwrite a good comment.
+        if [ ! -s policy-comment.md ]; then
+          rm -f policy-comment.md
+          if [ "$code" -ne 2 ]; then
+            echo "::warning::pr-policy could not render its markdown report; no comment will be posted."
+          fi
+        fi
 
         echo "exit-code=$code" >> "$GITHUB_OUTPUT"
         {
@@ -101,12 +115,23 @@ runs:
       run: |
         set -uo pipefail
         marker="<!-- pr-policy -->"
+
+        # No report means the check failed before it could render one (a bad
+        # config, say). Posting just the marker would overwrite a good comment.
+        if [ ! -s policy-comment.md ]; then
+          echo "::notice::pr-policy produced no report, so there is no comment to post."
+          exit 0
+        fi
         printf '%s\n' "$marker" >> policy-comment.md
 
         post_comment() {
-          # Update the existing comment rather than adding one per push.
-          existing=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
-            --jq "map(select(.body | contains(\"$marker\"))) | .[0].id // empty") || return 1
+          # Update the existing comment rather than adding one per push. Only the
+          # bot's own comment counts, so a user quoting the marker is never
+          # edited, and only the first match is used.
+          ids=$(gh api "repos/$REPO/issues/$PR/comments" --paginate --jq \
+            ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$marker\"))) | .id") \
+            || return 1
+          existing=$(printf '%s\n' "$ids" | head -n 1)
 
           if [ -n "$existing" ]; then
             gh api -X PATCH "repos/$REPO/issues/comments/$existing" \
@@ -125,8 +150,8 @@ runs:
             "The token cannot write to this pull request, which is expected for" \
             "pull requests from forks (their GITHUB_TOKEN is read-only)." \
             "The findings are in the job log and the 'findings' output. To get a" \
-            "comment, run the workflow on 'pull_request_target' (read the security" \
-            "notes in the README first), or set 'comment: false' to silence this."
+            "comment on fork pull requests, post it from a separate 'workflow_run'" \
+            "workflow (see the README), or set 'comment: false' to silence this."
         fi
 
     - name: Apply the result

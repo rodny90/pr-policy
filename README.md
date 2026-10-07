@@ -175,13 +175,15 @@ pr-policy
 
 | Output | Description |
 | --- | --- |
-| `exit-code` | `0` when the policy passed or is reporting-only, `1` when enforcement failed. |
+| `exit-code` | `0` when the policy passed or is reporting-only, `1` when enforcement failed, `2` on a bad configuration, a bad revision or a missing base. |
 | `findings` | The findings as JSON, the same shape as `pr-policy check --format json`. |
 
 ### Notes
 
 - Commit-trailer rules read the branch history, so check out with `fetch-depth: 0`, as in the workflow above.
-- Posting the comment needs `pull-requests: write`. If the comment cannot be written, the job does not fail: the action logs a `::warning::` and the job's result still comes only from the check's exit code. This is what happens on pull requests from forks, whose `GITHUB_TOKEN` is read-only. The findings are still in the job log and the `findings` output. To silence the warning, set `comment: "false"` for those runs. To get a comment on fork pull requests you would have to run on `pull_request_target`, which gives the workflow a write token; read GitHub's [guidance on pwn requests](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/) first, and never check out and run the fork's code in that job.
+- Posting the comment needs `pull-requests: write`. If the comment cannot be written, the job does not fail: the action logs a `::warning::` and the job's result still comes only from the check's exit code. This is what happens on pull requests from forks, whose `GITHUB_TOKEN` is read-only. The findings are still in the job log and the `findings` output. To silence the warning, set `comment: "false"` for those runs.
+- The action posts its comment only on `pull_request` events. It deliberately does not support `pull_request_target`: that event hands a write token to a job that would have to check out the fork's code, which is the pattern GitHub's Security Lab [warns against](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/). To get a comment on fork pull requests, split the work: run the action with `comment: "false"` on `pull_request` and upload the `policy-comment.md` it leaves in the workspace as an artifact, then post that file from a second workflow triggered by `workflow_run`, which has a write token and never checks out the fork. No example of that split ships yet.
+- If the check cannot run at all (exit code `2`: a bad config or a missing base), nothing is posted, so an earlier good comment is left alone. The step's error is in the job log.
 - Examples to copy: [`examples/`](examples/).
 
 ## The rules

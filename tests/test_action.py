@@ -140,14 +140,19 @@ def fake_gh(directory: Path, *, existing: str = "", fail_on: str = "") -> Path:
         '  echo "gh: Resource not accessible by integration (HTTP 403)" >&2\n'
         "  exit 1\n"
         "fi\n"
-        f'if [ "$verb" = "lookup" ]; then echo "{existing}"; fi\n'
+        f'if [ "$verb" = "lookup" ]; then printf \'%b\\n\' "{existing}"; fi\n'
         "exit 0\n"
     )
     script.chmod(0o755)
     return bin_dir
 
 
-def run_comment_step(cwd: Path, bin_dir: Path) -> subprocess.CompletedProcess:
+def run_comment_step(
+    cwd: Path, bin_dir: Path, report: str | None = "### pr-policy\n\nNo findings.\n"
+) -> subprocess.CompletedProcess:
+    """Run the comment step; `report` is what the check step left in policy-comment.md."""
+    if report is not None:
+        (cwd / "policy-comment.md").write_text(report)
     env = {
         "PATH": os.pathsep.join([str(bin_dir), os.environ["PATH"]]),
         "GH_TOKEN": "not-a-real-token",
@@ -187,7 +192,7 @@ def test_unwritable_token_warns_instead_of_failing_the_job(tmp_path: Path, fail_
     assert result.returncode == 0
     assert "::warning" in result.stdout
     assert "fork" in result.stdout
-    assert "pull_request_target" in result.stdout
+    assert "workflow_run" in result.stdout
     assert "comment: false" in result.stdout
     # The reason from the API is still visible in the log.
     assert "HTTP 403" in result.stderr
@@ -212,3 +217,55 @@ def test_a_failed_comment_does_not_change_the_check_result(offending, tmp_path: 
 
     steps = yaml.safe_load(ACTION.read_text())["runs"]["steps"]
     assert steps[-1]["run"] == "exit ${{ steps.check.outputs.exit-code }}"
+
+
+@pytest.mark.parametrize("report", [None, ""])
+def test_no_report_means_nothing_is_posted(tmp_path: Path, report: str | None) -> None:
+    # A bare marker would overwrite a good sticky comment with an empty one.
+    result = run_comment_step(tmp_path, fake_gh(tmp_path), report=report)
+    assert result.returncode == 0
+    assert "no comment to post" in result.stdout
+    assert not (tmp_path / "gh-calls.log").exists()
+
+
+def test_only_the_first_matching_comment_is_updated(tmp_path: Path) -> None:
+    run_comment_step(tmp_path, fake_gh(tmp_path, existing="11\\n22"))
+    calls = (tmp_path / "gh-calls.log").read_text()
+    assert "-X PATCH repos/octo/demo/issues/comments/11" in calls
+    assert "comments/22" not in calls
+
+
+def test_the_lookup_only_trusts_the_actions_own_comments() -> None:
+    # Anyone can paste the marker into a comment; only the bot's is the sticky one.
+    assert 'select(.user.login == \\"github-actions[bot]\\"' in comment_step_script()
+
+
+def test_a_config_error_leaves_no_report_to_post(offending, tmp_path: Path) -> None:
+    bad = offending.write("bad.yml", "rules:\n  nonsense: {}\n")
+    stale = offending.root / "policy-comment.md"
+    stale.write_text("### pr-policy\n\nleft over from an earlier run\n")
+    out = tmp_path / "gh_output"
+    result = run_step(offending.root, out, BASE=offending.default_branch, CONFIG=str(bad))
+    assert outputs(out)["exit-code"] == "2"
+    assert not stale.exists()
+    assert "::warning" not in result.stdout
+
+
+def test_a_normal_run_leaves_a_report(offending, tmp_path: Path) -> None:
+    run_step(offending.root, tmp_path / "gh_output", BASE=offending.default_branch)
+    assert (offending.root / "policy-comment.md").read_text().startswith("### pr-policy")
+
+
+def test_the_exit_code_output_documents_all_three_values() -> None:
+    action = yaml.safe_load(ACTION.read_text())
+    description = action["outputs"]["exit-code"]["description"]
+    assert all(code in description for code in ("0", "1", "2"))
+
+
+def test_the_comment_step_only_runs_on_pull_request_events() -> None:
+    # pull_request_target would hand a write token to a job that checks out
+    # attacker-controlled code, so the action does not support it.
+    steps = yaml.safe_load(ACTION.read_text())["runs"]["steps"]
+    step = next(s for s in steps if s["name"] == "Comment on the pull request")
+    assert "github.event_name == 'pull_request'" in step["if"]
+    assert "pull_request_target" not in comment_step_script()
