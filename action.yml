@@ -1,5 +1,5 @@
-name: pr-policy
-description: Check a pull request against the contribution policy your project already wrote down.
+name: pr-policy gate
+description: Check pull requests against your own CONTRIBUTING rules and post one sticky comment. No AI detection.
 author: rodny90
 
 branding:
