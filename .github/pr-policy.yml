@@ -20,7 +20,7 @@ rules:
     require_signed_off: false
 
   disclosure:
-    # .github/PULL_REQUEST_TEMPLATE.md:11 — "I used generative AI tools, and I have reviewed and understood the result"
+    # .github/PULL_REQUEST_TEMPLATE.md:5 — "Generative AI"
     enabled: true
     severity: "warn"
 

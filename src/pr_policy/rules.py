@@ -12,7 +12,7 @@ import re
 from collections.abc import Iterable
 from typing import Callable
 
-from pr_policy.config import Config, RuleConfig
+from pr_policy.config import AI_HEADING, Config, RuleConfig
 from pr_policy.context import PullRequest
 from pr_policy.report import Finding, code_span
 
@@ -69,6 +69,21 @@ def _mentions_agent(text: str, identities: Iterable[str]) -> str | None:
         ):
             return identity
     return None
+
+
+def _kept_ai_section(body: str) -> bool:
+    """Whether the body still has a heading about AI with something written under it."""
+    heading = re.compile(AI_HEADING, re.IGNORECASE)
+    lines = HTML_COMMENT.sub("", body).splitlines()
+    for index, line in enumerate(lines):
+        if not heading.match(line):
+            continue
+        for following in lines[index + 1 :]:
+            if re.match(r"^\s*#{1,6}\s", following):
+                break
+            if following.strip():
+                return True
+    return False
 
 
 def _strip_template_noise(body: str) -> str:
@@ -165,6 +180,11 @@ def check_disclosure(pr: PullRequest, rule: RuleConfig) -> Iterable[Finding]:
         return
 
     relevant_unticked = [label for label in unticked if matches(label)]
+    if not relevant_unticked and _kept_ai_section(pr.body):
+        # A template that asks in prose has no box to tick. What can be checked
+        # is that the section was not deleted.
+        return
+
     if relevant_unticked:
         yield Finding(
             rule=rule.name,

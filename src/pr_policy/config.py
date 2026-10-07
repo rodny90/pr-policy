@@ -41,6 +41,21 @@ AGENT_IDENTITIES = (
     "noreply@openai.com",
 )
 
+# What counts as an AI-disclosure checkbox: a ticked box whose label matches any of
+# these satisfies the `disclosure` rule. `pr-policy init` switches the rule on from
+# narrower wording (infer.AI_MENTION), and everything it reacts to has to match
+# here, or a ticked box would still be reported as missing.
+DISCLOSURE_CHECKBOX_PATTERNS = (
+    r"generative ai",
+    # Bare "AI" as well, so both answers of "I did not use AI" / "I used AI" count.
+    r"\bai\b",
+    r"\b(llm|copilot|chatgpt|claude|codex)\b",
+)
+
+# A heading that opens an AI section of a pull request template. Templates whose
+# answers are prose rather than checkboxes are checked on the section being kept.
+AI_HEADING = r"^\s*#{1,6}\s+.*\b(generative ai|ai|artificial intelligence|llm)\b"
+
 DEFAULTS: dict[str, dict[str, Any]] = {
     "attribution": {
         "enabled": True,
@@ -57,11 +72,7 @@ DEFAULTS: dict[str, dict[str, Any]] = {
         "enabled": False,
         "severity": "warn",
         # Any one of these, present and ticked, satisfies the rule.
-        "checkbox_patterns": [
-            r"generative ai",
-            r"\bai\b.*(tool|assist|generat)",
-            r"(tool|assist|generat).*\bai\b",
-        ],
+        "checkbox_patterns": list(DISCLOSURE_CHECKBOX_PATTERNS),
     },
     "template": {
         "enabled": True,

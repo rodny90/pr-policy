@@ -182,7 +182,7 @@ pr-policy
 
 - Commit-trailer rules read the branch history, so check out with `fetch-depth: 0`, as in the workflow above.
 - Posting the comment needs `pull-requests: write`. If the comment cannot be written, the job does not fail: the action logs a `::warning::` and the job's result still comes only from the check's exit code. This is what happens on pull requests from forks, whose `GITHUB_TOKEN` is read-only. The findings are still in the job log and the `findings` output. To silence the warning, set `comment: "false"` for those runs.
-- The action posts its comment only on `pull_request` events. It deliberately does not support `pull_request_target`: that event hands a write token to a job that would have to check out the fork's code, which is the pattern GitHub's Security Lab [warns against](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/). To get a comment on fork pull requests, split the work: run the action with `comment: "false"` on `pull_request` and upload the `policy-comment.md` it leaves in the workspace as an artifact, then post that file from a second workflow triggered by `workflow_run`, which has a write token and never checks out the fork. No example of that split ships yet.
+- The action posts its comment only on `pull_request` events. It deliberately does not support `pull_request_target`: that event hands a write token to a job that would have to check out the fork's code, which is the pattern GitHub's Security Lab [warns against](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/). To get a comment on fork pull requests, split the work: run the action with `comment: "false"` on `pull_request` and upload the `policy-comment.md` it leaves in the workspace as an artifact, then post that file (with a `<!-- pr-policy -->` line appended, so later runs update it) from a second workflow triggered by `workflow_run`, which has a write token and never checks out the fork. No example of that split ships yet.
 - If the check cannot run at all (exit code `2`: a bad config or a missing base), nothing is posted, so an earlier good comment is left alone. The step's error is in the job log.
 - Examples to copy: [`examples/`](examples/).
 
@@ -196,7 +196,13 @@ pr-policy
 | `disclosure` | off, warn | The AI-disclosure checkbox was answered — with either answer |
 | `linked_issue` | off, warn | The body references an issue (`Closes #123`) |
 
-`disclosure` and `linked_issue` are off until your documentation says the project wants them, which is what `pr-policy init` works out.
+`disclosure` and `linked_issue` are off until your documentation says the project wants them, which is what `pr-policy init` works out. It enables a rule only from wording that asks for something ("you must disclose AI tools", "please open an issue first"), not from a sentence that merely mentions the subject. In the pull request template, a checkbox item about the subject, or a heading such as `## Generative AI`, counts as the question being asked.
+
+How `disclosure` decides whether the question was answered:
+
+- A **ticked box** whose label matches one of `checkbox_patterns` passes, whichever answer it is. The default patterns accept any label that mentions AI (`generative ai`, `\bai\b`, `llm`, `copilot`, `chatgpt`, `claude`, `codex`), which covers everything `init` reacts to. Set your own list if your template words the question differently.
+- An **unticked** box that matches is reported as not ticked.
+- With **no matching box at all**, the rule looks for a heading about AI with something written under it. That is how templates that ask in prose (a "Generative AI" section holding two sentences to choose from) are handled, and all it can verify is that the section was not deleted. Without one, the body is reported as carrying no disclosure statement.
 
 ### The attribution rule
 
@@ -230,6 +236,8 @@ rules:
   disclosure:
     enabled: true
     severity: warn
+    # A ticked box whose label matches any of these (regular expressions) satisfies the rule.
+    checkbox_patterns: ['generative ai', '\bai\b', '\b(llm|copilot|chatgpt|claude|codex)\b']
   template:
     enabled: true
     severity: warn

@@ -56,10 +56,21 @@ All notable changes to this project are documented here. The format follows
 - `pr-policy init` now requires requirement-shaped language before it enables
   `disclosure` or `linked_issue`, as the 0.1.0 notes already claimed. Before, any
   non-negated mention of AI tools or of issues switched the rule on ("You may use AI
-  tools here." enabled `disclosure`). A sentence now has to ask for something (must,
-  required, please, should, or an imperative such as "Link the issue"), or be a
-  checkbox item in the pull request template. `require_signed_off` was already
-  stricter and is unchanged.
+  tools here." enabled `disclosure`). A sentence now has to ask for something: must,
+  required, mandatory, please, should, have/need/expected to, or an imperative such as
+  "Link the issue" or "Disclose AI use". "Welcome" and "always" do not count. In the
+  pull request template, a checkbox item about the subject counts as the question being
+  asked, as does a heading such as "Generative AI" for `disclosure`; negated answer
+  options ("I did not use AI") are no longer discarded there. `require_signed_off` shares
+  the same wording rules, so "we use the DCO" alone no longer enables it.
+- `disclosure` recognises every box `init` can enable it from. The default
+  `checkbox_patterns` now accept any label that mentions AI (and `llm`, `copilot`,
+  `chatgpt`, `claude`, `codex`), where before `init` could enable the rule on wording the
+  rule then failed to see as ticked. For templates that ask in prose under an AI heading,
+  the rule passes while that section is kept and reports the body when it is deleted.
+  `checkbox_patterns` is documented in the README.
+- `pr-policy init` no longer strips leading `x`/`X` letters from the line it quotes
+  ("Xcode users must ...").
 
 ## [0.1.0] - 2026-10-07
 

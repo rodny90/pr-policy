@@ -15,6 +15,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from pr_policy.config import AI_HEADING, DISCLOSURE_CHECKBOX_PATTERNS
+
 SOURCE_FILES = (
     "CONTRIBUTING.md",
     ".github/CONTRIBUTING.md",
@@ -58,24 +60,48 @@ class Detector:
     option: str
     value: Any
     pattern: re.Pattern
-    # An optional second pattern the same sentence must also match. It separates
-    # a project stating a requirement from one merely mentioning the subject.
+    # A second pattern the same sentence must also match. It separates a project
+    # stating a requirement from one merely mentioning the subject.
     requires: re.Pattern | None = None
-    # A checkbox item in the pull request template is a question put to the
-    # contributor, so it counts as stating the requirement without further wording.
-    checkbox: bool = False
+    # A pattern that states the requirement on its own: "use `git commit -s`" is
+    # an instruction without needing "must" beside it.
+    suffices: re.Pattern | None = None
+    # In a pull request template, a checkbox item is itself the question put to the
+    # contributor, and so is a heading that opens the section ("## Generative AI").
+    # Both count without requirement wording, and a negation in a checkbox is just
+    # one of the answers ("I did not use AI"). `template_pattern` widens what a
+    # checkbox may mention; `heading` is what a section heading may say.
+    template_question: bool = False
+    template_pattern: re.Pattern | None = None
+    heading: re.Pattern | None = None
 
 
-# Words that make a sentence ask for something rather than describe it.
-REQUIREMENT = (
-    r"\b(must|required?|requires?|please|should|need|expected?|always)\b"
+# Words that make a sentence ask for something rather than describe it. There is
+# deliberately no bare "always" or "welcome": "contributions are always welcome"
+# invites, it does not require.
+REQUIREMENT = re.compile(
+    r"\b(must|required?|requires?|mandatory|please|should"
+    r"|(have|has|need|needs|expected) to|all commits|every commit|every pull request)\b"
     # An instruction can also be an imperative: "Link the issue." "Disclose AI use."
     r"|^[\W_]*(open|file|create|link|reference|mention|add"
-    r"|disclose|declare|state|tell|say|indicate)\b"
+    r"|disclose|declare|state|tell|say|indicate)\b",
+    re.IGNORECASE,
 )
 
 CHECKBOX_ITEM = re.compile(r"^[-*+]\s*\[[ xX]\]")
+HEADING = re.compile(r"^#{1,6}\s")
+# The markdown that introduces a line: "## ", "- [ ] ", "1. ".
+LEADING_MARKUP = re.compile(r"^(?:#{1,6}\s+|[-*+]\s+(?:\[[ xX]\]\s*)?|\d+[.)]\s+)")
 
+# What a prose sentence has to mention to be about AI use. This is narrower than the
+# rule's own checkbox patterns (config.DISCLOSURE_CHECKBOX_PATTERNS), which must
+# accept everything matched here, or init could switch the rule on from wording the
+# rule then fails to recognise. tests/test_infer.py holds the two together.
+AI_MENTION = re.compile(
+    r"\b(generative ai|ai[-\s]generated|ai (tool|assist|help)|llm|"
+    r"copilot|chatgpt|claude|codex)",
+    re.IGNORECASE,
+)
 
 DETECTORS = (
     Detector(
@@ -86,39 +112,38 @@ DETECTORS = (
             r"sign(ed)?[-\s]off|\bDCO\b|developer certificate of origin|git commit -s",
             re.IGNORECASE,
         ),
-        requires=re.compile(
-            r"\b(must|require[ds]?|please|need|should|all commits|every commit|use)\b",
-            re.IGNORECASE,
-        ),
+        requires=REQUIREMENT,
+        suffices=re.compile(r"git commit -s", re.IGNORECASE),
     ),
     Detector(
         rule="disclosure",
         option="enabled",
         value=True,
-        pattern=re.compile(
-            r"(generative ai|ai[-\s]generated|ai (tool|assist|help)|\bllm\b|"
-            r"copilot|chatgpt|claude|codex)",
-            re.IGNORECASE,
-        ),
-        requires=re.compile(REQUIREMENT, re.IGNORECASE),
-        checkbox=True,
+        pattern=AI_MENTION,
+        requires=REQUIREMENT,
+        template_question=True,
+        template_pattern=re.compile("|".join(DISCLOSURE_CHECKBOX_PATTERNS), re.IGNORECASE),
+        heading=re.compile(AI_HEADING, re.IGNORECASE),
     ),
     Detector(
         rule="linked_issue",
         option="enabled",
         value=True,
         pattern=re.compile(
-            r"((closes|fixes|resolves)\s+#|link(ed|s)?\s+(to\s+)?(an?\s+)?issue|"
+            r"((closes|fixes|resolves)\s+#|"
+            r"link(ed|s)?\s+(to\s+)?((the|an?)\s+)?(\w+\s+)?issue|"
+            r"reference[sd]?\s+((the|an?)\s+)?(\w+\s+)?issue|associated issue|"
             r"open an issue (first|before)|issue (first|before))",
             re.IGNORECASE,
         ),
-        requires=re.compile(REQUIREMENT, re.IGNORECASE),
+        requires=REQUIREMENT,
+        template_question=True,
     ),
 )
 
 
 def _trim(line: str, limit: int = 90) -> str:
-    line = re.sub(r"\s+", " ", line.strip().lstrip("#-*[ ]xX").strip())
+    line = LEADING_MARKUP.sub("", re.sub(r"\s+", " ", line.strip()))
     return line if len(line) <= limit else line[: limit - 1].rstrip() + "…"
 
 
@@ -134,12 +159,20 @@ def units(text: str) -> list[tuple[int, str]]:
     return found
 
 
-def _states_requirement(detector: Detector, unit: str, is_template: bool) -> bool:
-    """Whether a sentence that mentions the subject also asks for something."""
-    assert detector.requires is not None
-    if detector.requires.search(unit):
+def _matches(detector: Detector, unit: str, is_template: bool) -> bool:
+    """Whether a sentence states the policy the detector looks for."""
+    if is_template and detector.template_question:
+        if CHECKBOX_ITEM.match(unit):
+            # The answers to the question, whatever they say: "I did not use AI".
+            return bool((detector.template_pattern or detector.pattern).search(unit))
+        if HEADING.match(unit) and detector.heading and detector.heading.search(unit):
+            return True
+
+    if NEGATION.search(unit) or not detector.pattern.search(unit):
+        return False
+    if detector.suffices and detector.suffices.search(unit):
         return True
-    return detector.checkbox and is_template and bool(CHECKBOX_ITEM.match(unit))
+    return detector.requires is None or bool(detector.requires.search(unit))
 
 
 def scan(root: Path) -> list[Signal]:
@@ -158,13 +191,9 @@ def scan(root: Path) -> list[Signal]:
         is_template = "pull_request_template" in relative.lower()
 
         for number, unit in units(text):
-            if NEGATION.search(unit):
-                continue
             for detector in DETECTORS:
                 key = (detector.rule, detector.option)
-                if key in signals or not detector.pattern.search(unit):
-                    continue
-                if detector.requires and not _states_requirement(detector, unit, is_template):
+                if key in signals or not _matches(detector, unit, is_template):
                     continue
                 signals[key] = Signal(
                     rule=detector.rule,
