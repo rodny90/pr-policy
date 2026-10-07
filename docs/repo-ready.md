@@ -74,9 +74,10 @@ Scores are weighted, not counted — a missing licence costs far more than a mis
 | `security` | 7 | A `SECURITY` file exists |
 | `readme-sections` | 5 | The README has both an install and a usage section |
 | `manifest` | 5 | A package manifest exists (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, ...) |
-| `changelog` | 5 | A `CHANGELOG`, `CHANGES` or `HISTORY` file exists |
-| `code-of-conduct` | 5 | A `CODE_OF_CONDUCT` file exists |
+| `changelog` | 4 | A `CHANGELOG`, `CHANGES` or `HISTORY` file exists |
+| `code-of-conduct` | 4 | A `CODE_OF_CONDUCT` file exists |
 | `gitignore` | 3 | A `.gitignore` exists |
+| `agents-md` | 2 | An agent instructions file exists at the repo root: `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules` or `.github/copilot-instructions.md` |
 | `issue-templates` | 2 | `.github/ISSUE_TEMPLATE/` is present and non-empty |
 
 Grades: **A** ≥ 90, **B** ≥ 75, **C** ≥ 60, **D** ≥ 40, **F** below that.

@@ -197,6 +197,8 @@ CI_FILES = (
     ".circleci/config.yml",
 )
 
+AGENT_FILE_STEMS = ("agents", "claude", "gemini", ".cursorrules")
+
 MANIFESTS = (
     "pyproject.toml",
     "setup.py",
@@ -300,6 +302,17 @@ def _check_issue_templates(repo: Repo) -> tuple[bool, str]:
     return False, "no issue template found"
 
 
+def _check_agent_instructions(repo: Repo) -> tuple[bool, str]:
+    # AGENTS.md is the shared convention; the others are tool-specific files that
+    # serve the same purpose, so a project using one of them is not marked down.
+    found = repo.find(*AGENT_FILE_STEMS, dirs=(".",))
+    if found is None:
+        found = repo.find("copilot-instructions", dirs=(".github",))
+    if found is None:
+        return False, "no AGENTS.md or other agent instructions file found"
+    return True, f"found {repo.rel(found)}"
+
+
 CHECKS: tuple[Check, ...] = (
     Check(
         id="license",
@@ -375,16 +388,26 @@ CHECKS: tuple[Check, ...] = (
     Check(
         id="changelog",
         title="Has a CHANGELOG",
-        weight=5,
+        weight=4,
         fix="Add CHANGELOG.md and record user-visible changes under each released version.",
         run=_presence_check("changelog", "changes", "history", label="CHANGELOG file"),
     ),
     Check(
         id="code-of-conduct",
         title="Has a code of conduct",
-        weight=5,
+        weight=4,
         fix="Add CODE_OF_CONDUCT.md. The Contributor Covenant is the usual choice.",
         run=_presence_check("code_of_conduct", "code-of-conduct", label="CODE_OF_CONDUCT file"),
+    ),
+    Check(
+        id="agents-md",
+        title="Has agent instructions",
+        weight=2,
+        fix=(
+            "Add AGENTS.md at the repo root: the commands to build, test and lint, "
+            "the conventions to follow, and what an agent must not do."
+        ),
+        run=_check_agent_instructions,
     ),
     Check(
         id="gitignore",
