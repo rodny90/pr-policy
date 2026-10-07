@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 from pr_policy.config import DEFAULTS, load_config
@@ -160,3 +161,92 @@ def test_unit_line_numbers_track_the_source() -> None:
 
     found = units("line one.\n\nline three.\n")
     assert [n for n, _ in found] == [1, 3]
+
+
+def write_contributing(root: Path, text: str) -> None:
+    (root / "CONTRIBUTING.md").write_text(text)
+
+
+def test_a_mention_of_ai_is_not_a_disclosure_policy(tmp_path: Path) -> None:
+    write_contributing(
+        tmp_path, "You may use AI tools here. Copilot is popular with contributors.\n"
+    )
+    assert ("disclosure", "enabled") not in signals_for(tmp_path)
+
+
+def test_a_requirement_about_ai_enables_disclosure(tmp_path: Path) -> None:
+    write_contributing(tmp_path, "You must disclose any AI tools you used.\n")
+    signal = signals_for(tmp_path)[("disclosure", "enabled")]
+    assert signal.value is True
+    assert signal.source == "CONTRIBUTING.md:1"
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Contributions that use generative AI must say so in the description.",
+        "Please tell us if an LLM wrote part of the change.",
+        "Disclose AI-generated code in the pull request.",
+        "AI tools should be mentioned in the pull request.",
+    ],
+)
+def test_requirement_shaped_ai_wording_enables_disclosure(tmp_path: Path, sentence: str) -> None:
+    write_contributing(tmp_path, sentence + "\n")
+    assert ("disclosure", "enabled") in signals_for(tmp_path)
+
+
+def test_a_prohibition_on_ai_is_not_a_disclosure_policy(tmp_path: Path) -> None:
+    write_contributing(tmp_path, "You must not submit AI-generated code.\n")
+    assert ("disclosure", "enabled") not in signals_for(tmp_path)
+
+
+def test_an_ai_checkbox_in_the_template_needs_no_extra_wording(tmp_path: Path) -> None:
+    # The checkbox is the question; the template does not also have to say "must".
+    target = tmp_path / ".github" / "pull_request_template.md"
+    target.parent.mkdir()
+    target.write_text("- [ ] I used ChatGPT for part of this change\n")
+    assert ("disclosure", "enabled") in signals_for(tmp_path)
+
+
+def test_a_checkbox_outside_the_template_is_just_a_mention(tmp_path: Path) -> None:
+    write_contributing(tmp_path, "- [ ] I used ChatGPT for part of this change\n")
+    assert ("disclosure", "enabled") not in signals_for(tmp_path)
+
+
+def test_ai_prose_in_the_template_is_just_a_mention(tmp_path: Path) -> None:
+    target = tmp_path / ".github" / "PULL_REQUEST_TEMPLATE.md"
+    target.parent.mkdir()
+    target.write_text("Many changes here are written with Copilot.\n")
+    assert ("disclosure", "enabled") not in signals_for(tmp_path)
+
+
+def test_a_mention_of_issues_is_not_a_linked_issue_policy(tmp_path: Path) -> None:
+    write_contributing(
+        tmp_path,
+        "GitHub links a pull request to an issue when the body says Closes #12.\n"
+        "Issues are triaged on Fridays.\n",
+    )
+    assert ("linked_issue", "enabled") not in signals_for(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "sentence",
+    [
+        "Every pull request must link to an issue.",
+        "Please open an issue first so we can agree on the approach.",
+        "Link to an issue that this change fixes.",
+        "The description should say Closes #123.",
+    ],
+)
+def test_requirement_shaped_issue_wording_enables_linked_issue(
+    tmp_path: Path, sentence: str
+) -> None:
+    write_contributing(tmp_path, sentence + "\n")
+    assert ("linked_issue", "enabled") in signals_for(tmp_path)
+
+
+def test_mentions_alone_enable_nothing(tmp_path: Path) -> None:
+    write_contributing(
+        tmp_path, "Claude and Copilot are popular. Issue first-timers are welcome here.\n"
+    )
+    assert scan(tmp_path) == []

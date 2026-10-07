@@ -31,6 +31,16 @@ All notable changes to this project are documented here. The format follows
 - README leads with a 30-second install, the real sticky-comment format, a
   comparison with related tools, and a reference for the action's inputs and outputs.
 
+### Fixed
+
+- `pr-policy init` now requires requirement-shaped language before it enables
+  `disclosure` or `linked_issue`, as the 0.1.0 notes already claimed. Before, any
+  non-negated mention of AI tools or of issues switched the rule on ("You may use AI
+  tools here." enabled `disclosure`). A sentence now has to ask for something (must,
+  required, please, should, or an imperative such as "Link the issue"), or be a
+  checkbox item in the pull request template. `require_signed_off` was already
+  stricter and is unchanged.
+
 ## [0.1.0] - 2026-10-07
 
 First release. Two commands: `pr-policy`, which checks pull requests against the

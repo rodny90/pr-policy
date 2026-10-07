@@ -61,6 +61,20 @@ class Detector:
     # An optional second pattern the same sentence must also match. It separates
     # a project stating a requirement from one merely mentioning the subject.
     requires: re.Pattern | None = None
+    # A checkbox item in the pull request template is a question put to the
+    # contributor, so it counts as stating the requirement without further wording.
+    checkbox: bool = False
+
+
+# Words that make a sentence ask for something rather than describe it.
+REQUIREMENT = (
+    r"\b(must|required?|requires?|please|should|need|expected?|always)\b"
+    # An instruction can also be an imperative: "Link the issue." "Disclose AI use."
+    r"|^[\W_]*(open|file|create|link|reference|mention|add"
+    r"|disclose|declare|state|tell|say|indicate)\b"
+)
+
+CHECKBOX_ITEM = re.compile(r"^[-*+]\s*\[[ xX]\]")
 
 
 DETECTORS = (
@@ -86,6 +100,8 @@ DETECTORS = (
             r"copilot|chatgpt|claude|codex)",
             re.IGNORECASE,
         ),
+        requires=re.compile(REQUIREMENT, re.IGNORECASE),
+        checkbox=True,
     ),
     Detector(
         rule="linked_issue",
@@ -96,6 +112,7 @@ DETECTORS = (
             r"open an issue (first|before)|issue (first|before))",
             re.IGNORECASE,
         ),
+        requires=re.compile(REQUIREMENT, re.IGNORECASE),
     ),
 )
 
@@ -117,6 +134,14 @@ def units(text: str) -> list[tuple[int, str]]:
     return found
 
 
+def _states_requirement(detector: Detector, unit: str, is_template: bool) -> bool:
+    """Whether a sentence that mentions the subject also asks for something."""
+    assert detector.requires is not None
+    if detector.requires.search(unit):
+        return True
+    return detector.checkbox and is_template and bool(CHECKBOX_ITEM.match(unit))
+
+
 def scan(root: Path) -> list[Signal]:
     """Find every policy signal in the project's own contributor documentation."""
     signals: dict[tuple[str, str], Signal] = {}
@@ -130,6 +155,8 @@ def scan(root: Path) -> list[Signal]:
         except OSError:
             continue
 
+        is_template = "pull_request_template" in relative.lower()
+
         for number, unit in units(text):
             if NEGATION.search(unit):
                 continue
@@ -137,7 +164,7 @@ def scan(root: Path) -> list[Signal]:
                 key = (detector.rule, detector.option)
                 if key in signals or not detector.pattern.search(unit):
                     continue
-                if detector.requires and not detector.requires.search(unit):
+                if detector.requires and not _states_requirement(detector, unit, is_template):
                     continue
                 signals[key] = Signal(
                     rule=detector.rule,
