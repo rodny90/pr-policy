@@ -17,7 +17,7 @@ pytest                          # the test suite
 ruff check .                    # lint
 ruff format --check .
 repo-ready . --min-score 100    # repo-ready audits this repository
-pr-policy check --base origin/main   # pr-policy checks your own branch
+pr-policy check --base origin/master   # pr-policy checks your own branch
 ```
 
 CI runs exactly these four commands, so a clean local run means a green pull request.
