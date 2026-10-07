@@ -6,6 +6,25 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **repo-ready `agents-md` check** — passes when the repository root has `AGENTS.md`
+  or a tool-specific equivalent (`CLAUDE.md`, `GEMINI.md`, `.cursorrules`,
+  `.github/copilot-instructions.md`). Worth 2 points, with a fix hint saying what
+  the file should contain. This repository now has an `AGENTS.md` of its own.
+- `examples/` with three copy-paste workflows (minimal, strict, custom config)
+  pinned to `@v0`, and an annotated sample `pr-policy.yml`. A test keeps them
+  valid.
+
+### Changed
+
+- repo-ready weights: `changelog` and `code-of-conduct` drop from 5 to 4 points to
+  make room for `agents-md`. A repository's score can move by a point.
+- The action is now named `pr-policy gate` with a shorter description, for the
+  GitHub Marketplace listing. The `uses: rodny90/pr-policy@v0` reference is unchanged.
+- README leads with a 30-second install, the real sticky-comment format, a
+  comparison with related tools, and a reference for the action's inputs and outputs.
+
 ## [0.1.0] - 2026-09-12
 
 First release. Two commands: `pr-policy`, which checks pull requests against the
