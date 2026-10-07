@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **`pr-policy replay --repo OWNER/NAME [--last N] [--config PATH]`** — checks a project's recent merged pull requests against a policy, offline and read-only, via the `gh` CLI. Prints how many PRs would have been flagged, per-rule counts, and the findings per PR. Exits 2 if `gh` is missing or not authenticated.
+
 ## [0.2.0] - 2026-10-07
 
 ### Added

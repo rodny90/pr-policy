@@ -157,6 +157,15 @@ pr-policy
   3 warn
 ```
 
+### Replay it on past pull requests
+
+```bash
+pr-policy replay --repo OWNER/NAME --last 20
+pr-policy replay --repo OWNER/NAME --config .github/pr-policy.yml
+```
+
+Checks a project's recent merged pull requests against a policy, so you can see what a config would have flagged before you turn it on. It reads through the `gh` CLI (must be installed and signed in, otherwise exit code 2), uses the same rules as `check`, and never posts or writes anything to GitHub. The config is `--config` if given, else `.github/pr-policy.yml` in the current directory, else the built-in defaults. The output is signals, not verdicts.
+
 ## The GitHub Action
 
 `uses: rodny90/pr-policy@v0` follows the newest 0.x release. Pin an exact tag (`@v0.1.0`) if you would rather approve every change yourself. While this project is pre-1.0, treat the rule set as settled and the configuration schema as still open to change.

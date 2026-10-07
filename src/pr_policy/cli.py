@@ -11,6 +11,8 @@ from pr_policy import __version__
 from pr_policy.config import DEFAULTS, ConfigError, load_config
 from pr_policy.context import GitError, from_git, load_event
 from pr_policy.infer import render, scan
+from pr_policy.replay import ReplayError, fetch_merged, replay
+from pr_policy.replay import render as render_replay
 from pr_policy.report import ERROR, INFO, WARN, Report, summarise
 from pr_policy.rules import evaluate
 
@@ -137,7 +139,30 @@ def build_parser() -> argparse.ArgumentParser:
         "--stdout", action="store_true", help="print the configuration instead of writing it"
     )
     init.add_argument("--force", action="store_true", help="overwrite an existing config")
+
+    replay_cmd = sub.add_parser(
+        "replay",
+        help="check a project's recent merged pull requests against a policy (read-only)",
+    )
+    replay_cmd.add_argument("--repo", required=True, metavar="OWNER/NAME", help="GitHub repository")
+    replay_cmd.add_argument("--last", type=int, default=20, help="how many merged PRs (default 20)")
+    replay_cmd.add_argument("--config", type=Path, default=None, help="path to pr-policy.yml")
     return parser
+
+
+def run_replay(args: argparse.Namespace) -> int:
+    if args.last < 1:
+        print("pr-policy: --last must be at least 1", file=sys.stderr)
+        return 2
+    try:
+        # An explicit --config wins; otherwise the local .github/pr-policy.yml, if any.
+        config = load_config(Path("."), args.config)
+        items = fetch_merged(args.repo, args.last)
+    except (ConfigError, ReplayError) as exc:
+        print(f"pr-policy: {exc}", file=sys.stderr)
+        return 2
+    print(render_replay(replay(items, config), args.repo, config))
+    return 0
 
 
 def run_check(args: argparse.Namespace) -> int:
@@ -222,6 +247,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_check(args)
     if args.command == "init":
         return run_init(args)
+    if args.command == "replay":
+        return run_replay(args)
     parser.print_help()
     return 0
 
