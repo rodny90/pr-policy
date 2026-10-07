@@ -5,9 +5,9 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/pr-policy.svg)](https://pypi.org/project/pr-policy/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Check pull requests against the contribution policy your project already wrote down.**
+**Reduce low-effort and drive-by pull requests with checks your project writes down.**
 
-Your `CONTRIBUTING.md` and pull request template say what you expect: sign off commits, tick the AI-disclosure box, link an issue. Nothing checks that a pull request did. `pr-policy` does, and posts what it found as one comment that updates on every push. It never tries to detect AI, and it fails nothing until you ask it to.
+`pr-policy` checks each pull request against the rules your project already stated: a linked issue, a size guideline, a completed pull request template, and the project's AI-assistance rules. It posts what it found as one comment that updates on every push. It never tries to detect AI. The AI trailer and disclosure checks are only two of its five rules, so it suits projects that allow AI, restrict it, or say nothing about it. Findings are warnings by default, and nothing blocks a pull request unless the maintainer sets `enforce: true` (or `--strict`).
 
 ## Install in 30 seconds
 
@@ -38,7 +38,7 @@ jobs:
       - uses: rodny90/pr-policy@v0
 ```
 
-That is all. It is reporting-only until your config sets `enforce: true`. Ready-made variants (strict, custom config) are in [`examples/`](examples/).
+That is all. It is reporting-only: findings default to warnings, and the job fails only if your config sets `enforce: true` (or the action's `strict` input is on) and a finding has severity `error`. Ready-made variants (strict, custom config) are in [`examples/`](examples/).
 
 ## What the maintainer sees
 
@@ -157,6 +157,15 @@ pr-policy
   3 warn
 ```
 
+### Replay it on past pull requests
+
+```bash
+pr-policy replay --repo OWNER/NAME --last 20
+pr-policy replay --repo OWNER/NAME --config .github/pr-policy.yml
+```
+
+Checks a project's recent merged pull requests against a policy, so you can see what a config would have flagged before you turn it on. It reads through the `gh` CLI (must be installed and signed in, otherwise exit code 2), uses the same rules as `check`, and never posts or writes anything to GitHub. The config is `--config` if given, else `.github/pr-policy.yml` in the current directory, else the built-in defaults. The output is signals, not verdicts. Limit: `gh` lists at most about 100 changed files per pull request, so for very large pull requests the file-count part of the `size` rule can under-report here (the line counts are unaffected).
+
 ## The GitHub Action
 
 `uses: rodny90/pr-policy@v0` follows the newest 0.x release. Pin an exact tag (`@v0.1.0`) if you would rather approve every change yourself. While this project is pre-1.0, treat the rule set as settled and the configuration schema as still open to change.
@@ -190,11 +199,11 @@ pr-policy
 
 | Rule | Default | What it checks |
 | --- | --- | --- |
-| `attribution` | **on**, warn | Agents never add `Signed-off-by:`; tool assistance uses `Assisted-by:` rather than `Co-authored-by:`; optionally that every commit is signed off |
-| `template` | **on**, warn | The description is not empty and the template's `<!-- ... -->` prompts were replaced |
-| `size` | **on**, info | The diff is within the project's line and file guidelines |
-| `disclosure` | off, warn | The AI-disclosure checkbox was answered — with either answer |
 | `linked_issue` | off, warn | The body references an issue (`Closes #123`) |
+| `size` | **on**, info | The diff is within the project's line and file guidelines |
+| `template` | **on**, warn | The description is not empty and the template's `<!-- ... -->` prompts were replaced |
+| `attribution` | **on**, warn | AI-assistance rules: agents never add `Signed-off-by:`; tool assistance uses `Assisted-by:` rather than `Co-authored-by:`; optionally that every commit is signed off |
+| `disclosure` | off, warn | The AI-disclosure checkbox was answered, with either answer |
 
 `disclosure` and `linked_issue` are off until your documentation says the project wants them, which is what `pr-policy init` works out. It enables a rule only from wording that asks for something ("you must disclose AI tools", "please open an issue first"), not from a sentence that merely mentions the subject. In the pull request template, a checkbox item about the subject, or a heading such as `## Generative AI`, counts as the question being asked.
 

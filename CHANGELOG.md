@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-07
+
+### Added
+
+- **`pr-policy replay --repo OWNER/NAME [--last N] [--config PATH]`** — checks a project's recent merged pull requests against a policy, offline and read-only, via the `gh` CLI. Prints how many PRs would have been flagged, per-rule counts, and the findings per PR. Exits 2 if `gh` is missing or not authenticated. Findings of one rule with the same message shape (for example many `Co-authored-by` commits) are folded into one line listing at most three short SHAs; per-rule counts are unchanged.
+
+### Changed
+
+- README, package description and action description now lead with reducing low-effort and drive-by pull requests through checks the project writes down; the AI trailer and disclosure checks are described as two of five rules. No behaviour change.
+
 ## [0.2.0] - 2026-10-07
 
 ### Added
@@ -132,5 +142,6 @@ written down at all.
   vendored directories so a dependency's tests cannot make a repository look tested.
 
 [Unreleased]: https://github.com/rodny90/pr-policy/compare/v0.2.0...HEAD
+[0.3.0]: https://github.com/rodny90/pr-policy/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/rodny90/pr-policy/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rodny90/pr-policy/releases/tag/v0.1.0
