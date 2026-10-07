@@ -181,7 +181,7 @@ pr-policy
 ### Notes
 
 - Commit-trailer rules read the branch history, so check out with `fetch-depth: 0`, as in the workflow above.
-- Posting the comment needs `pull-requests: write`. On pull requests from forks the default token is read-only, so set `comment: "false"` for those; the findings still appear in the job log and in the outputs.
+- Posting the comment needs `pull-requests: write`. If the comment cannot be written, the job does not fail: the action logs a `::warning::` and the job's result still comes only from the check's exit code. This is what happens on pull requests from forks, whose `GITHUB_TOKEN` is read-only. The findings are still in the job log and the `findings` output. To silence the warning, set `comment: "false"` for those runs. To get a comment on fork pull requests you would have to run on `pull_request_target`, which gives the workflow a write token; read GitHub's [guidance on pwn requests](https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/) first, and never check out and run the fork's code in that job.
 - Examples to copy: [`examples/`](examples/).
 
 ## The rules

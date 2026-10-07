@@ -99,20 +99,34 @@ runs:
         PR: ${{ github.event.pull_request.number }}
         REPO: ${{ github.repository }}
       run: |
-        set -euo pipefail
+        set -uo pipefail
         marker="<!-- pr-policy -->"
         printf '%s\n' "$marker" >> policy-comment.md
 
-        # Update the existing comment rather than adding one per push.
-        existing=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
-          --jq "map(select(.body | contains(\"$marker\"))) | .[0].id // empty")
+        post_comment() {
+          # Update the existing comment rather than adding one per push.
+          existing=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq "map(select(.body | contains(\"$marker\"))) | .[0].id // empty") || return 1
 
-        if [ -n "$existing" ]; then
-          gh api -X PATCH "repos/$REPO/issues/comments/$existing" \
-            -F body=@policy-comment.md >/dev/null
-        else
-          gh api -X POST "repos/$REPO/issues/$PR/comments" \
-            -F body=@policy-comment.md >/dev/null
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$existing" \
+              -F body=@policy-comment.md >/dev/null
+          else
+            gh api -X POST "repos/$REPO/issues/$PR/comments" \
+              -F body=@policy-comment.md >/dev/null
+          fi
+        }
+
+        # The comment is a convenience. The job's result is decided by the check
+        # step's exit code alone, so a comment that cannot be written must not
+        # fail the job. Pull requests from forks get a read-only token (HTTP 403).
+        if ! post_comment; then
+          echo "::warning title=pr-policy could not post its comment::" \
+            "The token cannot write to this pull request, which is expected for" \
+            "pull requests from forks (their GITHUB_TOKEN is read-only)." \
+            "The findings are in the job log and the 'findings' output. To get a" \
+            "comment, run the workflow on 'pull_request_target' (read the security" \
+            "notes in the README first), or set 'comment: false' to silence this."
         fi
 
     - name: Apply the result

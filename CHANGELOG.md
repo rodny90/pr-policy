@@ -18,6 +18,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- The action's comment step no longer fails the job when it cannot write the comment, as on
+  pull requests from forks (read-only token, HTTP 403). It logs a `::warning::` explaining
+  why and what to do, and the job's result still comes only from the check's exit code.
+  Failures of the check itself are not affected.
 - repo-ready weights: `changelog` and `code-of-conduct` drop from 5 to 4 points to
   make room for `agents-md`. A repository's score can move by a point.
 - The action is now named `pr-policy gate` with a shorter description, for the
