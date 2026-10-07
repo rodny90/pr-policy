@@ -207,3 +207,57 @@ def test_evaluate_collects_findings_across_rules() -> None:
     rules_hit = {f.rule for f in findings}
     assert {"attribution", "template", "size"} <= rules_hit
     assert "attribution" in checked
+
+
+def sign_off(who: str) -> str:
+    return f"Change\n\nSigned-off-by: {who}"
+
+
+@pytest.mark.parametrize(
+    "who",
+    [
+        "Jo Raider <jo@example.com>",  # contains "aider"
+        "Cursorina Smith <cs@example.com>",  # starts with "cursor"
+        "Claude Dupont <claude@dupont.example>",  # a person who shares the name
+        "Devinder Singh <ds@example.com>",  # starts with "devin"
+        "Geminiano Rossi <gr@example.com>",  # starts with "gemini"
+    ],
+)
+def test_people_who_merely_share_letters_with_an_agent_are_not_flagged(who: str) -> None:
+    assert run(make_pr([sign_off(who)]), "attribution") == []
+
+
+@pytest.mark.parametrize(
+    "who",
+    [
+        "Claude <noreply@anthropic.com>",
+        "Claude Code <noreply@anthropic.com>",
+        "Claude Opus 5.5 <agent@example.com>",
+        "Copilot <175728472+Copilot@users.noreply.github.com>",
+        "devin-ai-integration[bot] <158243242+devin-ai-integration[bot]@users.noreply.github.com>",
+        "aider (gpt-4) <noreply@aider.chat>",
+        "Cursor Agent <cursoragent@cursor.com>",
+        "Amazon Q Developer <bot@example.com>",
+        "GitHub Copilot",
+    ],
+)
+def test_agent_identities_are_still_matched_as_whole_words(who: str) -> None:
+    assert run(make_pr([sign_off(who)]), "attribution")
+
+
+def test_an_agent_address_is_matched_whatever_the_display_name() -> None:
+    assert run(make_pr([sign_off("A Helper <noreply@anthropic.com>")]), "attribution")
+
+
+def test_a_signed_off_finding_quotes_the_trailer_in_a_code_span_for_markdown() -> None:
+    (finding,) = run(
+        make_pr([sign_off("Claude @octocat [x](http://evil.example) <noreply@anthropic.com>")]),
+        "attribution",
+    )
+    assert "Signed-off-by: Claude @octocat" in finding.message
+    assert (
+        "`Signed-off-by: Claude @octocat [x](http://evil.example) <noreply@anthropic.com>`"
+        in finding.markdown
+    )
+    # The JSON shape is unchanged.
+    assert "markdown" not in finding.as_dict()

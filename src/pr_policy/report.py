@@ -8,6 +8,7 @@ whether that should block anything is a separate decision, made by the
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 
 ERROR = "error"
@@ -17,6 +18,15 @@ INFO = "info"
 RANK = {ERROR: 0, WARN: 1, INFO: 2}
 
 
+def code_span(value: str) -> str:
+    """Wrap text in a markdown code span so it cannot mention, link or format."""
+    text = " ".join(value.split())
+    longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
+    fence = "`" * (longest + 1)
+    pad = " " if text.startswith("`") or text.endswith("`") else ""
+    return f"{fence}{pad}{text}{pad}{fence}"
+
+
 @dataclass(frozen=True)
 class Finding:
     rule: str
@@ -24,6 +34,9 @@ class Finding:
     message: str
     hint: str = ""
     where: str = ""
+    # The message as it should appear in markdown, for findings that quote text a
+    # contributor controls (a trailer, say). Not part of the JSON output.
+    markdown: str = ""
 
     def as_dict(self) -> dict:
         return {

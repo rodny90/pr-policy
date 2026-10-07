@@ -37,6 +37,14 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `attribution` matches agent names as whole words, so "Jo Raider" is no longer read as
+  `aider`. A name followed by what reads as a surname, on an ordinary address ("Claude
+  Dupont <claude@dupont.example>"), is treated as a person. Addresses such as
+  `noreply@anthropic.com` still match anywhere, so real agent trailers are caught as before.
+- Markdown output puts the contributor's `Signed-off-by` text in a code span. Before, a
+  trailer could inject live `@mentions` and links into the bot's comment.
+- `--format markdown` no longer crashes with `UnicodeEncodeError` when stdout uses a
+  legacy Windows code page: it writes UTF-8.
 - The action no longer overwrites a good sticky comment with a bare marker when the check
   fails with exit code 2: with no report there is nothing to post. A markdown report that
   comes out empty is removed and reported with a warning instead of being hidden.

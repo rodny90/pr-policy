@@ -14,7 +14,7 @@ from typing import Callable
 
 from pr_policy.config import Config, RuleConfig
 from pr_policy.context import PullRequest
-from pr_policy.report import Finding
+from pr_policy.report import Finding, code_span
 
 RuleFn = Callable[[PullRequest, RuleConfig], Iterable[Finding]]
 
@@ -25,10 +25,48 @@ UNTICKED = re.compile(r"^\s*[-*]\s*\[\s*\]\s*(?P<label>.+?)\s*$", re.MULTILINE)
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
+# Words that can follow an agent's name without being a person's surname:
+# "Claude Code", "Claude Opus 5.5", "Cursor Agent".
+AGENT_WORDS = frozenset(
+    {"code", "agent", "bot", "ai", "assistant", "chat", "cli", "opus", "sonnet", "haiku", "gpt"}
+)
+BOT_ADDRESS = re.compile(r"noreply|\bbot\b", re.IGNORECASE)
+
+
+def _looks_like_a_person(after_name: str) -> bool:
+    """Whether the words after an agent's name read as a surname: "Claude Dupont"."""
+    words = after_name.split()
+    if not words:
+        return False
+    first = words[0].strip("(),.")
+    return first.isalpha() and first[:1].isupper() and first.lower() not in AGENT_WORDS
+
+
 def _mentions_agent(text: str, identities: Iterable[str]) -> str | None:
-    lowered = text.lower()
+    """Return the agent identity a trailer value names, if it names one.
+
+    Names match as whole words, so "Raider" is not "aider". Identities that are
+    addresses ("noreply@anthropic.com") match anywhere. A bare name in the address
+    only counts when the address is a bot's, and a name followed by what looks like a
+    surname, on an ordinary address, is a person who shares the name.
+    """
+    name = re.sub(r"<[^>]*>", " ", text).strip()
+    address = " ".join(re.findall(r"<([^>]*)>", text))
+    bot_address = bool(BOT_ADDRESS.search(address))
+
     for identity in identities:
-        if identity.lower() in lowered:
+        needle = identity.lower()
+        if "@" in needle or "." in needle:
+            if needle in text.lower():
+                return identity
+            continue
+        word = re.compile(rf"(?<!\w){re.escape(needle)}(?!\w)", re.IGNORECASE)
+        if bot_address and word.search(address):
+            return identity
+        match = word.search(name)
+        if match and not (
+            address and not bot_address and _looks_like_a_person(name[match.end() :])
+        ):
             return identity
     return None
 
@@ -56,12 +94,21 @@ def check_attribution(pr: PullRequest, rule: RuleConfig) -> Iterable[Finding]:
             for value in signed_off:
                 identity = _mentions_agent(value, identities)
                 if identity:
+                    template = "commit {sha} has {trailer}, which names a coding agent ({agent})"
                     yield Finding(
                         rule=rule.name,
                         severity=rule.severity,
-                        message=(
-                            f"commit {commit.short_sha} has 'Signed-off-by: {value}', "
-                            f"which names a coding agent ({identity})"
+                        message=template.format(
+                            sha=commit.short_sha,
+                            trailer=f"'Signed-off-by: {value}'",
+                            agent=identity,
+                        ),
+                        # The trailer is the contributor's text; keep it from
+                        # mentioning anyone or linking anywhere in the comment.
+                        markdown=template.format(
+                            sha=commit.short_sha,
+                            trailer=code_span(f"Signed-off-by: {value}"),
+                            agent=identity,
                         ),
                         hint=(
                             "Only a human can certify the DCO. Sign off as yourself and "

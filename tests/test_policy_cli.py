@@ -188,3 +188,38 @@ def test_version_flag(capsys) -> None:
         main(["--version"])
     assert exc.value.code == 0
     assert "pr-policy" in capsys.readouterr().out
+
+
+def test_markdown_never_lets_a_trailer_mention_or_link(repo, capsys) -> None:
+    repo.branch("feature")
+    repo.commit(
+        "A change\n\nSigned-off-by: Claude @maintainer [free money](http://evil.example) "
+        "<noreply@anthropic.com>"
+    )
+    main(check(repo, "--format", "markdown"))
+    out = capsys.readouterr().out
+    line = next(ln for ln in out.splitlines() if "@maintainer" in ln)
+    # Every attacker-controlled character sits inside the code span.
+    outside = line.split("`")[0] + line.rsplit("`", 1)[1]
+    assert "@maintainer" not in outside
+    assert "evil.example" not in outside
+    assert "[free money]" not in outside
+
+
+def test_code_span_survives_backticks_in_the_text() -> None:
+    from pr_policy.report import code_span
+
+    assert code_span("a `b` c") == "``a `b` c``"
+    assert code_span("`edge`") == "`` `edge` ``"
+    assert code_span("two   spaces\nnewline") == "`two spaces newline`"
+
+
+def test_markdown_survives_a_legacy_windows_code_page(branch, monkeypatch) -> None:
+    import io
+    import sys
+
+    raw = io.BytesIO()
+    monkeypatch.setattr(sys, "stdout", io.TextIOWrapper(raw, encoding="cp1252", newline=""))
+    assert main(check(branch, "--format", "markdown")) == 0
+    sys.stdout.flush()
+    assert "🟡".encode() in raw.getvalue()
