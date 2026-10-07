@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pr-policy"
-version = "0.2.0"
+version = "0.3.0"
 description = "Reduce low-effort and drive-by pull requests with checks your project writes down. No AI detection."
 readme = "README.md"
 requires-python = ">=3.9"
