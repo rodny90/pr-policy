@@ -37,6 +37,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Commit checks skip merge commits. On `pull_request` events the checkout is GitHub's
+  synthetic merge of the branch into its base, which `require_signed_off` flagged on
+  every pull request in projects that run the DCO.
 - `attribution` matches agent names as whole words, so "Jo Raider" is no longer read as
   `aider`. A name followed by what reads as a surname, on an ordinary address ("Claude
   Dupont <claude@dupont.example>"), is treated as a person. Addresses such as

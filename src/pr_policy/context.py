@@ -106,9 +106,17 @@ class PullRequest:
 
 
 def commits_between(root: Path, base: str, head: str) -> list[Commit]:
+    """The commits the pull request adds, without merge commits.
+
+    On a ``pull_request`` event the checkout is GitHub's synthetic merge of the
+    branch into its base, authored by the runner and never signed off. It is not
+    something the contributor wrote, so it is left out, as are merges of the base
+    back into the branch.
+    """
     raw = _git(
         root,
         "log",
+        "--no-merges",
         f"--format=%H{UNIT}%an{UNIT}%ae{UNIT}%B{RECORD}",
         f"{base}..{head}",
     )
