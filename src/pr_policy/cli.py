@@ -161,6 +161,10 @@ def run_replay(args: argparse.Namespace) -> int:
     except (ConfigError, ReplayError) as exc:
         print(f"pr-policy: {exc}", file=sys.stderr)
         return 2
+    # Findings quote contributor names and trailers, which a legacy Windows code page
+    # cannot always encode.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     print(render_replay(replay(items, config), args.repo, config))
     return 0
 

@@ -164,7 +164,7 @@ pr-policy replay --repo OWNER/NAME --last 20
 pr-policy replay --repo OWNER/NAME --config .github/pr-policy.yml
 ```
 
-Checks a project's recent merged pull requests against a policy, so you can see what a config would have flagged before you turn it on. It reads through the `gh` CLI (must be installed and signed in, otherwise exit code 2), uses the same rules as `check`, and never posts or writes anything to GitHub. The config is `--config` if given, else `.github/pr-policy.yml` in the current directory, else the built-in defaults. The output is signals, not verdicts.
+Checks a project's recent merged pull requests against a policy, so you can see what a config would have flagged before you turn it on. It reads through the `gh` CLI (must be installed and signed in, otherwise exit code 2), uses the same rules as `check`, and never posts or writes anything to GitHub. The config is `--config` if given, else `.github/pr-policy.yml` in the current directory, else the built-in defaults. The output is signals, not verdicts. Limit: `gh` lists at most about 100 changed files per pull request, so for very large pull requests the file-count part of the `size` rule can under-report here (the line counts are unaffected).
 
 ## The GitHub Action
 
