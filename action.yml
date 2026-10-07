@@ -1,0 +1,120 @@
+name: pr-policy
+description: Check a pull request against the contribution policy your project already wrote down.
+author: rodny90
+
+branding:
+  icon: check-square
+  color: blue
+
+inputs:
+  config:
+    description: Path to pr-policy.yml. Defaults to the conventional locations.
+    required: false
+    default: ""
+  base:
+    description: Base ref to compare against. Defaults to the pull request's base branch.
+    required: false
+    default: ""
+  strict:
+    description: Fail the job on error findings even if the config does not enforce.
+    required: false
+    default: "false"
+  comment:
+    description: Post the findings as a sticky comment on the pull request.
+    required: false
+    default: "true"
+  python-version:
+    description: Python version used to run pr-policy.
+    required: false
+    default: "3.12"
+
+outputs:
+  exit-code:
+    description: 0 when the policy passed or is reporting-only, 1 when enforcement failed.
+    value: ${{ steps.check.outputs.exit-code }}
+  findings:
+    description: The findings as JSON.
+    value: ${{ steps.check.outputs.findings }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install pr-policy
+      shell: bash
+      run: python -m pip install --quiet "${{ github.action_path }}"
+
+    - name: Check the pull request
+      id: check
+      shell: bash
+      env:
+        BASE: ${{ inputs.base }}
+        BASE_REF: ${{ github.base_ref }}
+        CONFIG: ${{ inputs.config }}
+        STRICT: ${{ inputs.strict }}
+      run: |
+        set -uo pipefail
+
+        if [ -n "$BASE" ]; then
+          base="$BASE"
+        elif [ -n "$BASE_REF" ]; then
+          # A shallow checkout has no remote-tracking ref for the base branch,
+          # and `git fetch origin <branch>` alone does not create one. The
+          # explicit refspec does, which is what `base` below resolves against.
+          git fetch --quiet --depth=50 origin \
+            "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}" || true
+          base="origin/${BASE_REF}"
+        else
+          echo "::error::No base ref. Set the 'base' input outside a pull request." >&2
+          exit 2
+        fi
+
+        args=(check --base "$base")
+        if [ -n "$CONFIG" ]; then args+=(--config "$CONFIG"); fi
+        if [ "$STRICT" = "true" ]; then args+=(--strict); fi
+
+        # Human-readable in the job log, and the exit code that decides the job.
+        pr-policy "${args[@]}"
+        code=$?
+
+        pr-policy "${args[@]}" --format markdown > policy-comment.md || true
+        pr-policy "${args[@]}" --format json > policy-findings.json || true
+
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        {
+          echo "findings<<PR_POLICY_EOF"
+          cat policy-findings.json
+          echo "PR_POLICY_EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Comment on the pull request
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        marker="<!-- pr-policy -->"
+        printf '%s\n' "$marker" >> policy-comment.md
+
+        # Update the existing comment rather than adding one per push.
+        existing=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+          --jq "map(select(.body | contains(\"$marker\"))) | .[0].id // empty")
+
+        if [ -n "$existing" ]; then
+          gh api -X PATCH "repos/$REPO/issues/comments/$existing" \
+            -F body=@policy-comment.md >/dev/null
+        else
+          gh api -X POST "repos/$REPO/issues/$PR/comments" \
+            -F body=@policy-comment.md >/dev/null
+        fi
+
+    - name: Apply the result
+      shell: bash
+      run: exit ${{ steps.check.outputs.exit-code }}

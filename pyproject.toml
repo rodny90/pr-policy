@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pr-policy"
+version = "0.1.0"
+description = "Check pull requests against the contribution policy your project already wrote down."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "rodny90" }]
+keywords = [
+    "open-source", "maintainer", "pull-request", "policy", "dco",
+    "attribution", "contributing", "linter", "ci",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = ["PyYAML>=5.1"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.5"]
+
+[project.urls]
+Homepage = "https://github.com/rodny90/pr-policy"
+Issues = "https://github.com/rodny90/pr-policy/issues"
+Changelog = "https://github.com/rodny90/pr-policy/blob/main/CHANGELOG.md"
+
+[project.scripts]
+repo-ready = "repo_ready.cli:main"
+pr-policy = "pr_policy.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/repo_ready", "src/pr_policy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
