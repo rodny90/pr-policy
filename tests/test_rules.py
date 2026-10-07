@@ -221,6 +221,8 @@ def sign_off(who: str) -> str:
         "Claude Dupont <claude@dupont.example>",  # a person who shares the name
         "Devinder Singh <ds@example.com>",  # starts with "devin"
         "Geminiano Rossi <gr@example.com>",  # starts with "gemini"
+        "Jules Verne <jv@example.com>",  # shares letters with google-labs-jules
+        "John Cline <john@example.com>",  # shares letters with noreply@cline.bot
     ],
 )
 def test_people_who_merely_share_letters_with_an_agent_are_not_flagged(who: str) -> None:
@@ -239,6 +241,9 @@ def test_people_who_merely_share_letters_with_an_agent_are_not_flagged(who: str)
         "Cursor Agent <cursoragent@cursor.com>",
         "Amazon Q Developer <bot@example.com>",
         "GitHub Copilot",
+        "openhands <openhands@all-hands.dev>",
+        "google-labs-jules[bot] <161369871+google-labs-jules[bot]@users.noreply.github.com>",
+        "Cline <noreply@cline.bot>",
     ],
 )
 def test_agent_identities_are_still_matched_as_whole_words(who: str) -> None:
