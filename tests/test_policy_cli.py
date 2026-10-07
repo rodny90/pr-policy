@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -113,9 +114,8 @@ def test_body_can_be_read_from_stdin(branch, capsys, monkeypatch) -> None:
     assert "template" in capsys.readouterr().out.split("rules run:")[1]
 
 
+@pytest.mark.skipif(not hasattr(os, "mkfifo"), reason="named pipes need a POSIX platform")
 def test_body_from_a_fifo_is_read(branch, capsys) -> None:
-    import os
-
     fifo = branch.root / "body.fifo"
     os.mkfifo(fifo)
     if os.fork() == 0:  # pragma: no cover - child writes then exits
@@ -146,7 +146,7 @@ def test_skipped_rules_are_reported(branch, capsys) -> None:
 def test_init_writes_a_config(repo, capsys) -> None:
     repo.write("CONTRIBUTING.md", "All commits must be signed off: use `git commit -s`.\n")
     assert main(["init", "--repo", str(repo.root)]) == 0
-    written = (repo.root / ".github" / "pr-policy.yml").read_text()
+    written = (repo.root / ".github" / "pr-policy.yml").read_text(encoding="utf-8")
     assert "require_signed_off: true" in written
     assert "attribution.require_signed_off" in capsys.readouterr().out
 
@@ -160,7 +160,7 @@ def test_init_refuses_to_overwrite(repo, capsys) -> None:
 def test_init_force_overwrites(repo, capsys) -> None:
     repo.write(".github/pr-policy.yml", "version: 1\n")
     assert main(["init", "--repo", str(repo.root), "--force"]) == 0
-    assert "rules:" in (repo.root / ".github" / "pr-policy.yml").read_text()
+    assert "rules:" in (repo.root / ".github" / "pr-policy.yml").read_text(encoding="utf-8")
 
 
 def test_init_stdout_writes_nothing(repo, capsys) -> None:

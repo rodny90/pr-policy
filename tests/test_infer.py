@@ -94,7 +94,7 @@ def test_rendered_config_round_trips_through_the_loader(tmp_path: Path) -> None:
     (tmp_path / "CONTRIBUTING.md").write_text(DCO_CONTRIBUTING)
     target = tmp_path / ".github" / "pr-policy.yml"
     target.parent.mkdir()
-    target.write_text(render(tmp_path, scan(tmp_path), DEFAULTS))
+    target.write_text(render(tmp_path, scan(tmp_path), DEFAULTS), encoding="utf-8")
 
     config = load_config(tmp_path)
     assert config.rule("attribution").get("require_signed_off") is True
