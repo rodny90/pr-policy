@@ -31,7 +31,7 @@ All notable changes to this project are documented here. The format follows
 - README leads with a 30-second install, the real sticky-comment format, a
   comparison with related tools, and a reference for the action's inputs and outputs.
 
-## [0.1.0] - 2026-09-12
+## [0.1.0] - 2026-10-07
 
 First release. Two commands: `pr-policy`, which checks pull requests against the
 policy a project wrote down, and `repo-ready`, which checks that the policy was
