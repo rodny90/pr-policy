@@ -130,8 +130,65 @@ def test_issue_template_directory(repo: Path) -> None:
     assert result_for(repo, "issue-templates").passed
 
 
+def test_agents_md_at_the_root_passes(repo: Path) -> None:
+    (repo / "AGENTS.md").write_text("Run pytest before committing.")
+    assert result_for(repo, "agents-md").passed
+
+
+def test_agents_md_is_found_case_insensitively(repo: Path) -> None:
+    (repo / "agents.md").write_text("Run pytest.")
+    assert result_for(repo, "agents-md").passed
+
+
+@pytest.mark.parametrize("name", ["CLAUDE.md", "GEMINI.md", ".cursorrules"])
+def test_tool_specific_instruction_files_also_pass(repo: Path, name: str) -> None:
+    (repo / name).write_text("Run pytest.")
+    assert result_for(repo, "agents-md").passed
+
+
+@pytest.mark.parametrize("name", ["claude.png", "agents.txt", "gemini.json", "AGENTS.md.bak"])
+def test_files_that_only_share_a_stem_do_not_count(repo: Path, name: str) -> None:
+    (repo / name).write_text("not instructions")
+    assert not result_for(repo, "agents-md").passed
+
+
+@pytest.mark.parametrize("name", ["AGENTS", "claude.MD"])
+def test_extensionless_and_uppercase_md_names_count(repo: Path, name: str) -> None:
+    (repo / name).write_text("Run pytest.")
+    assert result_for(repo, "agents-md").passed
+
+
+def test_a_copilot_instructions_png_does_not_count(repo: Path) -> None:
+    (repo / ".github").mkdir()
+    (repo / ".github" / "copilot-instructions.png").write_text("x")
+    assert not result_for(repo, "agents-md").passed
+
+
+def test_copilot_instructions_pass(repo: Path) -> None:
+    (repo / ".github").mkdir()
+    (repo / ".github" / "copilot-instructions.md").write_text("Run pytest.")
+    assert result_for(repo, "agents-md").passed
+
+
+def test_missing_agent_instructions_fail_with_a_fix(repo: Path) -> None:
+    result = result_for(repo, "agents-md")
+    assert not result.passed
+    assert "AGENTS.md" in result.fix
+
+
+def test_agents_md_below_the_root_does_not_count(repo: Path) -> None:
+    (repo / "docs").mkdir()
+    (repo / "docs" / "AGENTS.md").write_text("Run pytest.")
+    assert not result_for(repo, "agents-md").passed
+
+
+def test_agents_md_is_a_low_weight_check() -> None:
+    check = next(c for c in CHECKS if c.id == "agents-md")
+    assert check.weight <= 2
+
+
 def test_score_is_weighted_not_counted(repo: Path) -> None:
-    # .gitignore is worth 3 points; one of twelve checks would be 8%.
+    # .gitignore is worth 3 points; one of thirteen checks would be 8%.
     (repo / ".gitignore").write_text("*.pyc\n")
     assert audit(repo).score == 3
 

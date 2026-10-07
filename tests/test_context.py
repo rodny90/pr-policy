@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pr_policy.context import diff_stats, from_git, load_event, parse_trailers
+from pr_policy.context import commits_between, diff_stats, from_git, load_event, parse_trailers
 
 
 def test_parses_trailers_from_the_final_paragraph() -> None:
@@ -123,3 +123,43 @@ def test_load_event_tolerates_a_missing_or_broken_file(tmp_path: Path) -> None:
     broken = tmp_path / "broken.json"
     broken.write_text("{not json")
     assert load_event(str(broken)) == {}
+
+
+def test_the_synthetic_merge_commit_of_a_pull_request_is_not_a_contributor_commit(repo) -> None:
+    # On `pull_request`, actions/checkout leaves HEAD on GitHub's merge of the
+    # branch into its base: a merge commit nobody signed off.
+    repo.branch("feature")
+    mine = repo.commit("My change\n\nSigned-off-by: A Human <human@example.com>")
+    repo._git("checkout", "-q", repo.default_branch)
+    repo._git("branch", "base")
+    repo._git("merge", "--no-ff", "-q", "-m", "Merge feature into base", "feature")
+
+    commits = commits_between(repo.root, "base", "HEAD")
+    assert [c.sha for c in commits] == [mine]
+
+
+def test_a_merge_of_the_base_back_into_the_branch_is_not_a_contributor_commit(repo) -> None:
+    repo.branch("feature")
+    mine = repo.commit("My change")
+    repo._git("checkout", "-q", repo.default_branch)
+    repo.commit("Upstream change", path="upstream.py")
+    repo._git("checkout", "-q", "feature")
+    repo._git("merge", "--no-ff", "-q", "-m", "Merge base into feature", repo.default_branch)
+
+    shas = [c.sha for c in commits_between(repo.root, repo.default_branch, "feature")]
+    assert shas == [mine]
+
+
+def test_require_signed_off_does_not_flag_the_merge_commit(repo) -> None:
+    from pr_policy.config import RuleConfig
+    from pr_policy.rules import check_attribution
+
+    repo.branch("feature")
+    repo.commit("My change\n\nSigned-off-by: A Human <human@example.com>")
+    repo._git("checkout", "-q", repo.default_branch)
+    repo._git("branch", "base")
+    repo._git("merge", "--no-ff", "-q", "-m", "Merge feature into base", "feature")
+
+    pr = from_git(repo.root, "base", "HEAD")
+    rule = RuleConfig("attribution", True, "warn", {"require_signed_off": True})
+    assert list(check_attribution(pr, rule)) == []

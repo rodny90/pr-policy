@@ -20,7 +20,7 @@ rules:
     require_signed_off: false
 
   disclosure:
-    # CONTRIBUTING.md:38 — "You may use AI tools here."
+    # .github/PULL_REQUEST_TEMPLATE.md:5 — "Generative AI"
     enabled: true
     severity: "warn"
 

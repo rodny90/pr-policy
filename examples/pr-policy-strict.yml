@@ -1,0 +1,22 @@
+# Copy to .github/workflows/pr-policy.yml
+#
+# Strict: the job fails when a rule reports an error-severity finding, even
+# if your config does not set `enforce: true`. Findings with severity `warn`
+# or `info` are still only reported, so raise a rule's severity to `error`
+# in the config to make it blocking.
+name: pr-policy
+on: pull_request
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: rodny90/pr-policy@v0
+        with:
+          strict: "true"

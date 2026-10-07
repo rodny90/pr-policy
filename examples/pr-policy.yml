@@ -1,0 +1,28 @@
+# A sample pr-policy config. Copy it to .github/pr-policy.yml, or generate one
+# from your own CONTRIBUTING.md and PR template with `pipx run pr-policy init`.
+version: 1
+enforce: false        # true makes error findings fail the build
+
+rules:
+  attribution:
+    enabled: true
+    severity: warn                  # error | warn | info
+    forbid_agent_sign_off: true     # only a human can certify the DCO
+    prefer_assisted_by: true        # tool assistance goes in Assisted-by:, not Co-authored-by:
+    require_signed_off: false
+  disclosure:
+    enabled: true                   # the AI-disclosure checkbox must be answered, either way
+    severity: warn
+  template:
+    enabled: true
+    severity: warn
+    min_body_chars: 30
+  linked_issue:
+    enabled: true
+    severity: warn
+    keywords: ["closes", "fixes", "resolves"]
+  size:
+    enabled: true
+    severity: info
+    max_lines: 1000
+    max_files: 100

@@ -1,0 +1,30 @@
+# Copy to .github/workflows/pr-policy.yml
+#
+# Reads the config from a non-default path (copy pr-policy.yml from this folder
+# to policy/pr-policy.yml), compares against an explicit base branch, and keeps
+# the result in the job log instead of posting a comment.
+name: pr-policy
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: policy
+        uses: rodny90/pr-policy@v0
+        with:
+          config: policy/pr-policy.yml
+          base: origin/main
+          comment: "false"
+          python-version: "3.12"
+      # `findings` is the same JSON as `pr-policy check --format json`.
+      - name: Show the exit code
+        if: always()
+        run: echo "pr-policy exit code ${{ steps.policy.outputs.exit-code }}"

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pr-policy"
-version = "0.1.0"
+version = "0.2.0"
 description = "Check pull requests against the contribution policy your project already wrote down."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -35,7 +35,7 @@ dev = ["pytest>=7", "ruff>=0.5"]
 [project.urls]
 Homepage = "https://github.com/rodny90/pr-policy"
 Issues = "https://github.com/rodny90/pr-policy/issues"
-Changelog = "https://github.com/rodny90/pr-policy/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/rodny90/pr-policy/blob/master/CHANGELOG.md"
 
 [project.scripts]
 repo-ready = "repo_ready.cli:main"

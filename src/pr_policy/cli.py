@@ -82,7 +82,8 @@ def render_markdown(report: Report, skipped: list[str]) -> str:
     icons = {ERROR: "🔴", WARN: "🟡", INFO: "🔵"}
     lines = ["### pr-policy", "", f"Found {summarise(report)}.", ""]
     for finding in report.ordered:
-        lines.append(f"- {icons.get(finding.severity, '•')} **{finding.message}**")
+        message = finding.markdown or finding.message
+        lines.append(f"- {icons.get(finding.severity, '•')} **{message}**")
         if finding.hint:
             lines.append(f"  {finding.hint}")
     lines.append("")
@@ -173,6 +174,10 @@ def run_check(args: argparse.Namespace) -> int:
     if args.format == "json":
         print(report.to_json())
     elif args.format == "markdown":
+        # The report carries emoji, and a pipe or file on a legacy Windows code page
+        # cannot encode them. Markdown is for comments, which are UTF-8.
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8")
         print(render_markdown(report, skipped), end="")
     else:
         print(render_text(report, Style(_colour_enabled(sys.stdout)), skipped))
